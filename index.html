@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<base target="_top">
+<meta charset="UTF-8">
+<title>Health Tracker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+body{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding-bottom:80px;color:#333}
+.container{max-width:1400px;margin:0 auto;padding:20px}
+@media(min-width:768px){.container{padding:20px 50px}}
+.header{color:#fff;text-align:center;margin-bottom:20px;padding:10px 0}
+.header h1{font-size:24px;font-weight:600}
+.header .user-info{font-size:13px;opacity:.85;margin-top:5px}
+.header .user-info .role-badge{background:rgba(255,255,255,.2);padding:2px 8px;border-radius:10px;font-size:11px;margin-left:5px}
+.card{background:#fff;border-radius:20px;padding:20px;margin-bottom:15px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+.card-title{font-size:18px;font-weight:600;margin-bottom:15px;color:#667eea}
+.main-grid{display:grid;grid-template-columns:1fr;gap:15px}
+@media(min-width:768px){.main-grid{grid-template-columns:repeat(2,1fr)}.card-full{grid-column:1/-1}}
+.progress-container{display:flex;justify-content:center;align-items:center;margin-bottom:20px;min-height:220px;position:relative}
+.rings-wrapper{position:relative;width:220px;height:220px}
+.circular-chart{position:absolute;top:0;left:0;width:100%;height:100%}
+.circle-bg{fill:none;stroke:#eee;stroke-width:2}
+.circle{fill:none;stroke-width:2;stroke-linecap:round;transition:stroke-dasharray .5s ease}
+.circle-calories{stroke:#1be47d}.circle-workouts{stroke:#1b7ee4}
+.rings-center-text{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
+.rings-center-text .main-value{font-size:28px;font-weight:700;color:#1be47d;line-height:1}
+.rings-center-text .sub-value{font-size:14px;font-weight:700;color:#1b7ee4;margin-top:4px}
+.rings-center-text .label{font-size:10px;color:#999;margin-top:2px}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:15px}
+.stat-item{text-align:center;padding:10px;background:#f8f9fa;border-radius:12px}
+.stat-value{font-size:18px;font-weight:700;color:#333}.stat-label{font-size:12px;color:#999;margin-top:5px}
+.form-group{margin-bottom:15px}
+label{display:block;margin-bottom:5px;font-weight:500;color:#667eea;font-size:14px}
+input,select,textarea{width:100%;padding:12px;border:2px solid #e0e0e0;border-radius:12px;font-size:14px;transition:border-color .3s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#667eea}
+.btn{width:100%;padding:14px;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;transition:transform .2s}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff}
+.btn-add{background:linear-gradient(135deg,#1be47d 0%,#1be4e4 100%);color:#fff;margin-top:10px}
+.btn-danger{background:linear-gradient(135deg,#e41b6f 0%,#ff6b6b 100%);color:#fff}
+.btn-small{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;border:none;padding:10px 15px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+.btn-xs{padding:6px 12px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600}
+.btn-xs-green{background:#1be47d;color:#fff}
+.btn-xs-red{background:#e41b6f;color:#fff}
+.tab-content{display:none}.tab-content.active{display:block}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;display:flex;justify-content:space-around;padding:10px 0;box-shadow:0 -5px 20px rgba(0,0,0,.1);z-index:100}
+.nav-item{flex:1;text-align:center;padding:10px;cursor:pointer;color:#999}
+.nav-item.active{color:#667eea}
+.nav-icon{font-size:24px;margin-bottom:5px}.nav-label{font-size:12px;font-weight:500}
+.exercise-row{background:#f8f9fa;padding:15px;border-radius:12px;margin-bottom:10px;position:relative}
+.exercise-remove{position:absolute;top:8px;right:8px;background:#e41b6f;color:#fff;border:none;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;line-height:1;z-index:10}
+.hidden{display:none!important}
+.macro-bar{margin-bottom:10px}
+.macro-label{display:flex;justify-content:space-between;margin-bottom:5px;font-size:14px}
+.bar-bg{background:#e0e0e0;height:8px;border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width .3s}
+.bar-protein{background:#1b7ee4}.bar-fat{background:#e41b6f}.bar-carbs{background:#f5a623}
+.date-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px}
+.date-nav button{background:#667eea;color:#fff;border:none;padding:8px 15px;border-radius:8px;cursor:pointer}
+.date-nav .current-date{font-weight:600;color:#667eea}
+.range-btn{background:#f0f0f0;border:none;padding:10px 15px;border-radius:8px;margin:5px;cursor:pointer;font-size:14px}
+.range-btn.active{background:#667eea;color:#fff}
+.autocomplete-container{position:relative}
+.autocomplete-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:2px solid #e0e0e0;border-radius:12px;max-height:200px;overflow-y:auto;z-index:10;box-shadow:0 5px 15px rgba(0,0,0,.2)}
+.autocomplete-item{padding:12px;cursor:pointer;border-bottom:1px solid #f0f0f0}
+.autocomplete-item:hover{background:#f8f9fa}
+.chart-container{position:relative;height:300px;margin-bottom:20px}
+.summary-box{background:#f8f9fa;padding:15px;border-radius:12px;margin-top:15px}
+.summary-item{margin-bottom:8px;font-size:14px}
+.activity-card{background:linear-gradient(135deg,#1be47d 0%,#1be4e4 100%);color:#fff;padding:15px;border-radius:12px;margin-bottom:10px}
+.activity-card h3{font-size:16px;margin-bottom:8px}.activity-card p{font-size:13px;opacity:.9}
+.sub-tabs{display:flex;gap:10px;margin-bottom:20px}
+.sub-tab{flex:1;padding:12px;background:#f0f0f0;border:none;border-radius:12px;cursor:pointer;font-size:14px;font-weight:600}
+.sub-tab.active{background:#667eea;color:#fff}
+.sub-content{display:none}.sub-content.active{display:block}
+.ingredient-row{background:#f8f9fa;padding:15px;border-radius:12px;margin-bottom:10px;position:relative}
+.ingredient-remove{position:absolute;top:8px;right:8px;background:#e41b6f;color:#fff;border:none;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;line-height:1}
+.recipe-total{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:15px;border-radius:12px;margin-top:15px;text-align:center}
+.activity-stats-card{background:#fff;border-radius:20px;padding:20px;margin-bottom:15px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+.activity-period-toggle{display:flex;background:#f0f0f0;border-radius:12px;padding:4px;margin-bottom:20px}
+.activity-period-btn{flex:1;padding:10px;border:none;background:transparent;border-radius:10px;font-size:14px;font-weight:600;color:#666;cursor:pointer;transition:all .3s}
+.activity-period-btn.active{color:#fff;background:linear-gradient(135deg,#1b7ee4 0%,#1be4e4 100%)}
+.activity-ring-container{display:flex;justify-content:center;align-items:center;margin-bottom:20px;min-height:180px;position:relative}
+.activity-ring-wrapper{position:relative;width:180px;height:180px}
+.activity-ring-svg{position:absolute;top:0;left:0;width:100%;height:100%}
+.activity-ring-bg{fill:none;stroke:#eee;stroke-width:2}
+.activity-ring-progress{fill:none;stroke-width:2;stroke-linecap:round;transition:stroke-dasharray .5s ease}
+.activity-ring-steps{stroke:#1be47d}.activity-ring-km{stroke:#1b7ee4}
+.activity-center-text{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
+.activity-center-text .main-value{font-size:24px;font-weight:700;color:#1be47d;line-height:1}
+.activity-center-text .sub-value{font-size:12px;font-weight:700;color:#1b7ee4;margin-top:4px}
+.activity-center-text .label{font-size:10px;color:#999;margin-top:2px}
+.activity-metrics{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.activity-metric{background:#f8f9fa;padding:15px;border-radius:12px;text-align:center}
+.activity-metric .value{font-size:22px;font-weight:700;color:#333}
+.activity-metric .label{font-size:12px;color:#999;margin-top:4px}
+.activity-metric .goal{font-size:11px;color:#667eea;margin-top:2px}
+.vitamins-block{background:#f8f9fa;padding:12px;border-radius:12px}
+.vitamin-item{margin-bottom:8px}
+.kbju-checklist-grid{display:grid;grid-template-columns:1fr;gap:15px;align-items:stretch}
+@media(min-width:768px){.kbju-checklist-grid{grid-template-columns:1fr 1fr}}
+.checklist-items{display:flex;flex-direction:column;gap:12px}
+.checklist-item{display:flex;align-items:center;justify-content:space-between;padding:12px 15px;background:#f8f9fa;border-radius:12px;cursor:pointer;transition:all .2s}
+.checklist-item:hover{background:#eef0ff}
+.checklist-info{display:flex;align-items:center;gap:12px}
+.checklist-icon{font-size:20px}.checklist-text{font-weight:500;color:#333}
+.checklist-checkbox{width:28px;height:28px;border:2px solid #d0d0d0;border-radius:8px;display:flex;align-items:center;justify-content:center;transition:all .3s;background:#fff}
+.checklist-checkbox.checked{background:linear-gradient(135deg,#1be47d 0%,#1be4e4 100%);border-color:#1be47d}
+.checklist-checkbox .check-icon{width:18px;height:18px;fill:#fff;opacity:0;transition:opacity .2s}
+.checklist-checkbox.checked .check-icon{opacity:1}
+.water-hygiene-block{padding:20px}
+.water-hygiene-grid{display:grid;grid-template-columns:1fr;gap:20px}
+@media(min-width:768px){.water-hygiene-grid{grid-template-columns:2fr 1fr}}
+.water-hygiene-left{display:flex;flex-direction:column;gap:15px}
+.drink-buttons{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.drink-btn{background:#f8f9fa;border:2px solid #e0e0e0;border-radius:12px;padding:12px 8px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:5px}
+.drink-btn:hover{background:#eef0ff;border-color:#667eea}
+.drink-icon{font-size:24px}.drink-name{font-size:12px;font-weight:600;color:#333}
+.custom-drink{display:grid;grid-template-columns:2fr 1fr auto;gap:10px;align-items:center}
+.custom-drink input{padding:10px;border:2px solid #e0e0e0;border-radius:8px;font-size:13px}
+.hygiene-buttons{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+@media(max-width:768px){.hygiene-buttons{grid-template-columns:repeat(3,1fr)}}
+.hygiene-btn{background:#f8f9fa;border:2px solid #e0e0e0;border-radius:12px;padding:10px 5px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:4px}
+.hygiene-btn.completed{background:linear-gradient(135deg,#1be47d 0%,#1be4e4 100%);border-color:#1be47d}
+.hygiene-btn.completed .hygiene-name{color:#fff}
+.hygiene-icon{font-size:20px}.hygiene-name{font-size:11px;font-weight:600;color:#333}
+.water-hygiene-right{display:flex;align-items:center;justify-content:center}
+.water-ring-container{position:relative;width:180px;height:180px}
+.water-ring-svg{position:absolute;top:0;left:0;width:100%;height:100%}
+.water-ring-bg{fill:none;stroke:#eee;stroke-width:2}
+.water-ring-progress{fill:none;stroke:#1be4e4;stroke-width:2;stroke-linecap:round;transition:stroke-dasharray .5s ease}
+.water-ring-text{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+.water-ring-percent{font-size:28px;font-weight:700;color:#1be4e4;line-height:1}
+.water-ring-amount{font-size:12px;color:#999;margin-top:5px}
+.kbju-sleep-column{display:flex;flex-direction:column;gap:15px;height:100%}
+.kbju-sleep-column .card{flex:1;display:flex;flex-direction:column}
+.kbju-sleep-column .card:first-child{flex:1.5}
+.kbju-sleep-column .card:last-child{flex:1}
+.sleep-stats-mini{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:15px;border-radius:12px}
+.sleep-stats-mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sleep-stat-mini-item{text-align:center}
+.sleep-stat-mini-value{font-size:20px;font-weight:700}
+.sleep-stat-mini-label{font-size:10px;opacity:.8;margin-top:2px}
+.sleep-mini-date{font-size:11px;opacity:.9;margin-top:8px;text-align:center}
+.sleep-mini-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;justify-content:center}
+.sleep-mini-tag{background:rgba(255,255,255,.2);padding:2px 6px;border-radius:4px;font-size:10px}
+.weight-history{margin-top:15px;max-height:120px;overflow-y:auto;padding-right:4px}
+.weight-history::-webkit-scrollbar{width:4px}
+.weight-history::-webkit-scrollbar-thumb{background:#667eea;border-radius:4px}
+.weight-history-item{display:flex;justify-content:space-between;padding:8px 12px;background:#f8f9fa;border-radius:8px;margin-bottom:5px;font-size:13px}
+.weight-display{text-align:center;margin-bottom:20px}
+.weight-value{font-size:48px;font-weight:700;color:#667eea;line-height:1}
+.weight-label{font-size:14px;color:#999;margin-top:5px}
+.weight-input-group{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}
+.weight-input-group input{padding:12px;border:2px solid #e0e0e0;border-radius:12px;font-size:16px}
+.weight-input-group .btn{width:auto;padding:12px 30px}
+.weight-mode-toggle{display:flex;background:#f0f0f0;border-radius:12px;padding:4px}
+.weight-mode-option{flex:1;display:flex;align-items:center;justify-content:center;padding:10px;cursor:pointer;border-radius:10px;transition:all .3s}
+.weight-mode-option input[type="radio"]{display:none}
+.weight-mode-option span{font-weight:600;font-size:14px;color:#666}
+.weight-mode-option input[type="radio"]:checked+span{color:#fff}
+.weight-mode-option:has(input[type="radio"]:checked){background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)}
+.three-col-grid{display:grid;grid-template-columns:1fr;gap:15px}
+@media(min-width:768px){.three-col-grid{grid-template-columns:repeat(3,1fr)}}
+.sleep-form-grid{display:grid;grid-template-columns:1fr;gap:15px}
+@media(min-width:640px){.sleep-form-grid{grid-template-columns:1fr 1fr}}
+.sleep-time-grid{display:grid;grid-template-columns:1fr;gap:15px}
+@media(min-width:640px){.sleep-time-grid{grid-template-columns:1fr 1fr}}
+.cycle-date-grid{display:grid;grid-template-columns:1fr;gap:15px;margin-bottom:20px}
+@media(min-width:640px){.cycle-date-grid{grid-template-columns:1fr 1fr}}
+.sleep-tag-input{display:flex;gap:10px;margin-bottom:10px}
+.sleep-tag-input input{flex:1}
+.sleep-tags-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.sleep-tag-item{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:6px 12px;border-radius:20px;font-size:13px;display:flex;align-items:center;gap:8px}
+.sleep-tag-item button{background:none;border:none;color:#fff;cursor:pointer;font-size:16px;line-height:1;padding:0}
+.sleep-history-item{background:#f8f9fa;padding:15px;padding-right:48px;border-radius:12px;margin-bottom:10px;cursor:pointer;transition:all .2s;position:relative}
+.sleep-history-item:hover{background:#eef0ff}
+.sleep-delete-btn{position:absolute;top:12px;right:12px;background:#e41b6f;color:#fff;border:none;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;z-index:2}
+.sleep-history-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.sleep-history-date{font-weight:600;color:#667eea}
+.sleep-history-duration{font-size:14px;color:#333}
+.sleep-history-details{font-size:13px;color:#666}
+.sleep-tag-autocomplete{position:relative}
+.sleep-tag-dropdown{position:absolute;top:100%;left:0;right:0;background:#fff;border:2px solid #e0e0e0;border-radius:12px;max-height:200px;overflow-y:auto;z-index:100;box-shadow:0 5px 15px rgba(0,0,0,.2);margin-top:5px}
+.sleep-tag-dropdown-item{padding:10px 12px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:14px}
+.sleep-tag-dropdown-item:hover{background:#f8f9fa}
+.sleep-tag-add-new{padding:10px 12px;cursor:pointer;background:linear-gradient(135deg,#1be47d 0%,#1be4e4 100%);color:#fff;font-weight:600;font-size:14px}
+.habits-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px}
+.habit-item{background:#f8f9fa;border:2px solid #e0e0e0;border-radius:12px;padding:15px 10px;text-align:center;cursor:pointer;transition:all .2s}
+.habit-item.completed{background:linear-gradient(135deg,#1be47d 0%,#1be4e4 100%);border-color:#1be47d}
+.habit-item.completed .habit-name,.habit-item.completed .habit-streak{color:#fff}
+.habit-icon{font-size:32px;margin-bottom:8px}
+.habit-name{font-size:13px;font-weight:600;color:#333;margin-bottom:4px}
+.habit-streak{font-size:11px;color:#999}
+.meal-type-selector{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:15px}
+.meal-type-btn{background:#f8f9fa;border:2px solid #e0e0e0;border-radius:10px;padding:10px 5px;cursor:pointer;transition:all .2s;text-align:center}
+.meal-type-btn.active{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-color:#667eea;color:#fff}
+.meal-type-btn .meal-icon{font-size:20px;display:block;margin-bottom:4px}
+.meal-type-btn .meal-name{font-size:11px;font-weight:600}
+.meal-group{margin-bottom:15px}
+.meal-group-header{font-size:14px;font-weight:600;color:#667eea;margin-bottom:8px;display:flex;align-items:center;gap:8px;padding-bottom:4px;border-bottom:1px solid #eee}
+.meal-group-icon{font-size:18px}
+.meal-group-total{font-size:11px;color:#999;margin-left:auto;font-weight:500}
+.meal-item{padding:8px 12px;background:#f8f9fa;border-radius:8px;margin-bottom:5px;font-size:13px}
+.meal-item-name{font-weight:600;color:#333}
+.meal-item-details{font-size:11px;color:#999;margin-top:2px}
+.modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,.5)}
+.modal.active{display:flex;align-items:center;justify-content:center}
+.modal-content{background:#fff;border-radius:20px;padding:25px;max-width:500px;width:90%;max-height:90vh;overflow-y:auto}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.modal-title{font-size:20px;font-weight:600;color:#667eea}
+.modal-close{background:none;border:none;font-size:28px;cursor:pointer;color:#999;line-height:1}
+.habit-manage-item{display:flex;align-items:center;justify-content:space-between;padding:10px 15px;background:#f8f9fa;border-radius:10px;margin-bottom:8px}
+.habit-manage-info{display:flex;align-items:center;gap:10px}
+.habit-manage-icon{font-size:22px}.habit-manage-name{font-weight:500;color:#333}
+.habit-manage-delete{background:#e41b6f;color:#fff;border:none;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+.cycle-calendar{background:#f8f9fa;border-radius:12px;padding:10px}
+.cycle-calendar-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cycle-calendar-header button{background:#667eea;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:12px}
+.cycle-month-label{font-weight:600;color:#667eea;font-size:14px}
+.cycle-weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px}
+.cycle-weekdays div{text-align:center;font-size:10px;font-weight:600;color:#999;padding:3px}
+.cycle-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cycle-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:11px;background:#fff;color:#333;cursor:pointer;transition:all .2s;user-select:none}
+.cycle-day:hover{background:#e0e0e0}
+.cycle-day.empty{background:transparent;cursor:default}
+.cycle-day.period{background:linear-gradient(135deg,#ff6b9d 0%,#ff4778 100%);color:#fff;font-weight:600}
+.cycle-day.today{border:2px solid #667eea;font-weight:600}
+.cycle-item{display:flex;align-items:center;justify-content:space-between;padding:10px 15px;background:#f8f9fa;border-radius:10px;margin-bottom:8px}
+.cycle-item-delete{background:#e41b6f;color:#fff;border:none;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+.skeleton{background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:skeleton-loading 1.5s infinite;border-radius:8px;height:20px}
+@keyframes skeleton-loading{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.checkbox-container{display:flex;align-items:center;gap:10px;margin:15px 0;min-height:40px}
+.checkbox-container input[type="checkbox"]{width:20px;height:20px;cursor:pointer;flex-shrink:0}
+.checkbox-container label{margin:0;cursor:pointer;flex:1;line-height:1.4}
+input::placeholder,textarea::placeholder{color:#999;opacity:1}
+.admin-stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;margin-bottom:20px}
+.admin-stat-card{background:#f8f9fa;padding:15px;border-radius:12px;text-align:center}
+.admin-stat-card .num{font-size:24px;font-weight:700;color:#667eea}
+.admin-stat-card .lbl{font-size:11px;color:#999;margin-top:4px}
+.admin-user-row{display:flex;align-items:center;justify-content:space-between;padding:12px 15px;background:#f8f9fa;border-radius:10px;margin-bottom:8px;flex-wrap:wrap;gap:8px}
+.admin-user-info{flex:1;min-width:200px}
+.admin-user-email{font-weight:600;color:#333;font-size:14px}
+.admin-user-meta{font-size:12px;color:#999;margin-top:2px}
+.admin-user-actions{display:flex;gap:6px;flex-wrap:wrap}
+.role-select{padding:6px 10px;border-radius:6px;border:1px solid #ddd;font-size:12px}
+.status-badge{display:inline-block;padding:3px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.status-active{background:#d4edda;color:#155724}
+.status-blocked{background:#f8d7da;color:#721c24}
+
+/* Login screen */
+.login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.login-card{background:#fff;border-radius:20px;padding:40px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center}
+.login-card h1{color:#667eea;font-size:28px;margin-bottom:10px}
+.login-card p{color:#666;margin-bottom:25px;line-height:1.5}
+.login-card input{margin-bottom:15px;text-align:center}
+.login-card .btn{margin-top:10px}
+.login-hint{font-size:12px;color:#999;margin-top:15px;line-height:1.5}
+
+/* Mobile fixes */
+html,body{max-width:100%;overflow-x:hidden}
+@media (max-width:430px){
+  .nav-label{display:none!important}
+  .nav-icon{font-size:24px;margin-bottom:0}
+  .nav-item{padding:9px 2px}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen" class="login-screen">
+  <div class="login-card">
+    <h1>🏥 Health Tracker</h1>
+    <p>Введите ваш Google-аккаунт для входа.<br>Первый вошедший станет администратором.</p>
+    <input type="email" id="email-input" placeholder="your.email@gmail.com">
+    <button class="btn btn-primary" onclick="login()">Войти</button>
+    <div class="login-hint">
+      💡 Убедитесь, что у вас есть доступ к таблице как редактору.
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" class="hidden">
+<div class="container">
+<div class="header">
+<h1 id="pageTitle">🏡 Главная</h1>
+<div class="user-info" id="userInfoBar"></div>
+</div>
+
+<!-- HOME -->
+<div id="tab-home" class="tab-content active">
+<div class="main-grid">
+<div class="card">
+<div class="date-nav"><button onclick="changeDate(-1)">◀</button><span class="current-date" id="currentDate"></span><button onclick="changeDate(1)">▶</button></div>
+<div class="progress-container"><div class="rings-wrapper">
+<svg viewBox="0 0 36 36" class="circular-chart"><path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/><path id="caloriesCircle" class="circle circle-calories" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/></svg>
+<svg viewBox="0 0 36 36" class="circular-chart" style="width:70%;height:70%;top:15%;left:15%"><path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/><path id="workoutsCircle" class="circle circle-workouts" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/></svg>
+<div class="rings-center-text"><div class="main-value" id="caloriesPercent">0%</div><div class="sub-value" id="workoutsText">0/3</div><div class="label">тренировок</div></div>
+</div></div>
+<div class="stats-grid">
+<div class="stat-item"><div class="stat-value" id="totalCalories">0</div><div class="stat-label">Ккал</div></div>
+<div class="stat-item"><div class="stat-value" id="totalProtein">0</div><div class="stat-label">Белки</div></div>
+<div class="stat-item"><div class="stat-value" id="totalFat">0</div><div class="stat-label">Жиры</div></div>
+<div class="stat-item"><div class="stat-value" id="totalCarbs">0</div><div class="stat-label">Углеводы</div></div>
+</div>
+</div>
+<div class="card" id="activityCard" style="display:none"><div class="card-title">💪 Сегодняшняя активность</div><div id="activityContent"></div></div>
+<div class="kbju-checklist-grid">
+<div class="kbju-sleep-column">
+<div class="card" style="margin-bottom:0"><div class="card-title">📊 Прогресс по КБЖУ</div>
+<div class="macro-bar"><div class="macro-label"><span>Белки</span><span id="proteinText">0/150г</span></div><div class="bar-bg"><div id="proteinBar" class="bar-fill bar-protein" style="width:0%"></div></div></div>
+<div class="macro-bar"><div class="macro-label"><span>Жиры</span><span id="fatText">0/70г</span></div><div class="bar-bg"><div id="fatBar" class="bar-fill bar-fat" style="width:0%"></div></div></div>
+<div class="macro-bar"><div class="macro-label"><span>Углеводы</span><span id="carbsText">0/200г</span></div><div class="bar-bg"><div id="carbsBar" class="bar-fill bar-carbs" style="width:0%"></div></div></div>
+</div>
+<div class="card" style="margin-top:0"><div class="card-title">😴 Последний сон</div>
+<div class="sleep-stats-mini"><div class="sleep-stats-mini-grid"><div class="sleep-stat-mini-item"><div class="sleep-stat-mini-value" id="sleepDuration">-</div><div class="sleep-stat-mini-label">часов</div></div><div class="sleep-stat-mini-item"><div class="sleep-stat-mini-value" id="sleepQualityMini">-</div><div class="sleep-stat-mini-label">качество</div></div></div><div class="sleep-mini-date" id="sleepDateRange">-</div><div class="sleep-mini-tags" id="sleepTagsContainer"></div></div>
+</div>
+</div>
+<div class="card"><div class="card-title">✅ Отмечено сегодня</div><div class="checklist-items">
+<div class="checklist-item"><div class="checklist-info"><div class="checklist-icon">💊</div><div class="checklist-text">Здоровье</div></div><div class="checklist-checkbox" id="check-health"><svg viewBox="0 0 24 24" class="check-icon"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div></div>
+<div class="checklist-item"><div class="checklist-info"><div class="checklist-icon">💊</div><div class="checklist-text">БАДы</div></div><div class="checklist-checkbox" id="check-supplements"><svg viewBox="0 0 24 24" class="check-icon"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div></div>
+<div class="checklist-item"><div class="checklist-info"><div class="checklist-icon">🦷</div><div class="checklist-text">Зубы</div></div><div class="checklist-checkbox" id="check-teeth"><svg viewBox="0 0 24 24" class="check-icon"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div></div>
+</div></div>
+</div>
+<div class="activity-stats-card"><div class="card-title">🏃 Активность</div>
+<div class="activity-period-toggle"><button class="activity-period-btn active" onclick="switchActivityPeriod('week',this)">Неделя</button><button class="activity-period-btn" onclick="switchActivityPeriod('month',this)">Месяц</button><button class="activity-period-btn" onclick="switchActivityPeriod('year',this)">Год</button></div>
+<div class="activity-ring-container"><div class="activity-ring-wrapper">
+<svg viewBox="0 0 36 36" class="activity-ring-svg"><path class="activity-ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/><path id="stepsRing" class="activity-ring-progress activity-ring-steps" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/></svg>
+<svg viewBox="0 0 36 36" class="activity-ring-svg" style="width:70%;height:70%;top:15%;left:15%"><path class="activity-ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/><path id="kmRing" class="activity-ring-progress activity-ring-km" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/></svg>
+<div class="activity-center-text"><div class="main-value" id="stepsPercent">0%</div><div class="sub-value" id="kmDisplay">0 км</div><div class="label">пройдено</div></div>
+</div></div>
+<div class="activity-metrics"><div class="activity-metric"><div class="value" id="stepsDisplay">0</div><div class="label">шагов</div><div class="goal" id="stepsGoal">цель: 70 000</div></div><div class="activity-metric"><div class="value" id="kmDisplay2">0</div><div class="label">километров</div><div class="goal" id="kmGoal">цель: 35 км</div></div></div>
+</div>
+<div class="card card-full"><div class="card-title">🎯 Привычки на сегодня</div><div class="habits-grid" id="habitsGrid"></div></div>
+<div class="card card-full water-hygiene-block"><div class="card-title">💧 Вода и Гигиена</div><div class="water-hygiene-grid">
+<div class="water-hygiene-left">
+<div class="drink-buttons"><button class="drink-btn" onclick="addWater('Вода')"><span class="drink-icon">💧</span><span class="drink-name">Вода</span></button><button class="drink-btn" onclick="addWater('Чай')"><span class="drink-icon">🍵</span><span class="drink-name">Чай</span></button><button class="drink-btn" onclick="addWater('Сок')"><span class="drink-icon">🧃</span><span class="drink-name">Сок</span></button><button class="drink-btn" onclick="addWater('Кофе')"><span class="drink-icon">☕</span><span class="drink-name">Кофе</span></button></div>
+<div class="custom-drink"><input type="text" id="customDrinkName" placeholder="Другой напиток"><input type="number" id="customDrinkAmount" placeholder="мл"><button class="btn-small" onclick="addCustomWater()">Добавить</button></div>
+<div class="hygiene-buttons"><button class="hygiene-btn" id="hygiene-bath" onclick="logHygieneAction('Ванная')"><span class="hygiene-icon">🛁</span><span class="hygiene-name">Ванная</span></button><button class="hygiene-btn" id="hygiene-shower" onclick="logHygieneAction('Душ')"><span class="hygiene-icon">🚿</span><span class="hygiene-name">Душ</span></button><button class="hygiene-btn" id="hygiene-pool" onclick="logHygieneAction('Бассейн')"><span class="hygiene-icon">🏊</span><span class="hygiene-name">Бассейн</span></button><button class="hygiene-btn" id="hygiene-sauna" onclick="logHygieneAction('Сауна')"><span class="hygiene-icon">♨️</span><span class="hygiene-name">Сауна</span></button><button class="hygiene-btn" id="hygiene-banya" onclick="logHygieneAction('Баня')"><span class="hygiene-icon">♨</span><span class="hygiene-name">Баня</span></button><button class="hygiene-btn" id="hygiene-teeth" onclick="logHygieneAction('Зубы')"><span class="hygiene-icon">🦷</span><span class="hygiene-name">Зубы</span></button></div>
+</div>
+<div class="water-hygiene-right"><div class="water-ring-container">
+<svg viewBox="0 0 36 36" class="water-ring-svg"><path class="water-ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/><path id="waterRing" class="water-ring-progress" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/></svg>
+<div class="water-ring-text"><div class="water-ring-percent" id="waterPercent">0%</div><div class="water-ring-amount"><span id="waterAmount">0</span>/<span id="waterGoalDisplay">2000</span> мл</div></div>
+</div></div>
+</div></div>
+<div class="card card-full" style="background:transparent;box-shadow:none;padding:0;margin-bottom:15px"><div class="three-col-grid">
+<div class="card"><div class="card-title">🍽️ Сегодня съедено</div><div id="todayFoodList"></div></div>
+<div class="card" id="vitaminsCard" style="display:none"><div class="card-title">💊 Витамины за день</div><div id="vitaminsBars"></div></div>
+<div class="card"><div class="card-title" style="display:flex;justify-content:space-between;align-items:center"><span>⚖️ Вес</span><span id="weightChange" style="font-size:12px;font-weight:600"></span></div><div class="weight-display"><div class="weight-value" id="currentWeightDisplay">-</div><div class="weight-label">кг</div></div><div class="weight-input-group"><input type="number" id="weightInput" placeholder="Введите вес" step="0.1"><button class="btn btn-primary" onclick="saveWeightAction()">Сохранить</button></div><div class="weight-history" id="weightHistory"></div></div>
+</div></div>
+<div class="card card-full"><div class="card-title">📈 Статистика за период</div>
+<div style="display:flex;flex-wrap:wrap;justify-content:center;margin-bottom:20px"><button class="range-btn active" onclick="showRange('week',this)">Неделя</button><button class="range-btn" onclick="showRange('month',this)">Месяц</button><button class="range-btn" onclick="showRange('year',this)">Год</button></div>
+<div class="chart-container"><canvas id="periodChart"></canvas></div>
+<div class="summary-box"><div style="margin-bottom:10px;font-weight:600">Сводка</div><div class="summary-item">🔥 <strong id="sumCalories">0</strong> ккал</div><div class="summary-item">💪 <strong id="sumProtein">0</strong> г</div><div class="summary-item">🥑 <strong id="sumFat">0</strong> г</div><div class="summary-item">🍞 <strong id="sumCarbs">0</strong> г</div><div class="summary-item" style="color:#999;font-size:12px">Дней: <span id="sumDays">0</span></div></div>
+</div>
+<div class="card card-full"><div class="card-title">⚖️ Динамика веса</div><div class="chart-container"><canvas id="weightChart"></canvas></div></div>
+</div>
+</div>
+
+<!-- FOOD -->
+<div id="tab-food" class="tab-content"><div class="main-grid">
+<div class="card"><div class="card-title">🥗 Быстрое добавление</div>
+<div class="form-group"><label>Прием пищи</label><div class="meal-type-selector"><div class="meal-type-btn active" data-meal="Завтрак" onclick="selectMealType(this)"><span class="meal-icon">🍳</span><span class="meal-name">Завтрак</span></div><div class="meal-type-btn" data-meal="Обед" onclick="selectMealType(this)"><span class="meal-icon">🍲</span><span class="meal-name">Обед</span></div><div class="meal-type-btn" data-meal="Ужин" onclick="selectMealType(this)"><span class="meal-icon">🌙</span><span class="meal-name">Ужин</span></div><div class="meal-type-btn" data-meal="Перекус" onclick="selectMealType(this)"><span class="meal-icon">🍏</span><span class="meal-name">Перекус</span></div></div></div>
+<div class="form-group autocomplete-container"><label>Продукт</label><input type="text" id="simpleName" placeholder="Гречка" oninput="debounceSearch(this.value)"><div id="autocompleteList" class="autocomplete-list hidden"></div></div>
+<div class="form-group"><label>Вес (г)</label><input type="number" id="simpleGrams" placeholder="100"></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="form-group"><label>Ккал/100г</label><input type="number" id="simpleCalories" placeholder="0"></div><div class="form-group"><label>Б/100г</label><input type="number" id="simpleProtein" placeholder="0"></div><div class="form-group"><label>Ж/100г</label><input type="number" id="simpleFat" placeholder="0"></div><div class="form-group"><label>У/100г</label><input type="number" id="simpleCarbs" placeholder="0"></div></div>
+<div class="checkbox-container"><input type="checkbox" id="simpleAddToDb" checked><label for="simpleAddToDb">Сохранить в базу</label></div>
+<button class="btn btn-primary" onclick="saveSimpleFood()">Добавить</button>
+</div>
+<div class="card"><div class="card-title">🍲 Конструктор блюда</div>
+<div class="form-group"><label>Название</label><input type="text" id="recipeName" placeholder="Борщ"></div>
+<div id="ingredientsList"></div>
+<button class="btn btn-add" onclick="addIngredient()">+ Ингредиент</button>
+<div id="recipeTotal" class="recipe-total hidden"><div style="font-size:18px;font-weight:700">Итого:</div><div id="recipeTotals" style="margin-top:10px"></div></div>
+<div class="checkbox-container"><input type="checkbox" id="addToDb" checked><label for="addToDb">Сохранить в базу</label></div>
+<button class="btn btn-primary" onclick="saveRecipe()">Сохранить</button>
+</div>
+</div></div>
+
+<!-- HEALTH -->
+<div id="tab-health" class="tab-content"><div class="main-grid">
+<div class="card"><div class="card-title">💊 Создание БАДа</div><div class="form-group"><label>Название</label><input type="text" id="supplementName" placeholder="Мультивитамины"></div><div class="form-group"><label>Состав</label><textarea id="supplementComposition" rows="4" placeholder="Витамин D: 2000, Витамин C: 500"></textarea></div><button class="btn btn-primary" onclick="saveSupplement()">Сохранить</button></div>
+<div class="card"><div class="card-title">✅ Принять БАД</div><div class="form-group"><label>Выберите</label><select id="supplementSelect" onchange="showSupplementDetails()"><option value="">-- Выберите --</option></select></div><div id="supplementDetails" style="margin-bottom:15px;padding:10px;background:#f8f9fa;border-radius:8px;display:none"><div style="font-size:12px;color:#667eea;font-weight:600">Состав:</div><div id="supplementCompositionDisplay" style="font-size:13px;margin-top:5px"></div></div><button class="btn btn-primary" onclick="takeSupplementFromList()">Отметить</button><div style="margin-top:20px"><div class="card-title" style="font-size:16px">Витамины за день</div><div id="supplementVitaminsBars" class="vitamins-block"></div></div></div>
+<div class="card card-full"><div class="card-title">📊 Состояние</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:20px"><div><div class="form-group"><label>Сладкое: <span id="cravingSweetValue">5</span></label><input type="range" id="cravingSweet" min="1" max="10" value="5" oninput="$('cravingSweetValue').textContent=this.value"></div><div class="form-group"><label>Солёное: <span id="cravingSaltyValue">5</span></label><input type="range" id="cravingSalty" min="1" max="10" value="5" oninput="$('cravingSaltyValue').textContent=this.value"></div><div class="form-group"><label>Самочувствие: <span id="wellbeingValue">7</span></label><input type="range" id="wellbeing" min="1" max="10" value="7" oninput="$('wellbeingValue').textContent=this.value"></div><div class="form-group"><label>Фокус: <span id="focusValue">7</span></label><input type="range" id="focus" min="1" max="10" value="7" oninput="$('focusValue').textContent=this.value"></div></div><div><div class="form-group"><label>Стресс: <span id="stressValue">3</span></label><input type="range" id="stress" min="1" max="10" value="3" oninput="$('stressValue').textContent=this.value"></div><div class="form-group"><label>Энергия: <span id="energyValue">7</span></label><input type="range" id="energy" min="1" max="10" value="7" oninput="$('energyValue').textContent=this.value"></div><div class="form-group"><label>Настроение: <span id="moodValue">7</span></label><input type="range" id="mood" min="1" max="10" value="7" oninput="$('moodValue').textContent=this.value"></div></div></div><button class="btn btn-primary" onclick="saveDailyStateAction()">Сохранить</button></div>
+<div class="card card-full"><div class="card-title">🌸 Менструальный цикл</div><div class="cycle-date-grid">
+<div class="form-group"><label>Начало</label><input type="date" id="cycleStartDate"></div>
+<div class="form-group"><label>Окончание</label><input type="date" id="cycleEndDate"></div>
+</div><button class="btn btn-primary" onclick="saveMenstrualCycleAction()" style="margin-bottom:20px">Сохранить</button><div class="cycle-calendar"><div class="cycle-calendar-header"><button onclick="changeCycleMonth(-1)">◀</button><div class="cycle-month-label" id="cycleMonthLabel"></div><button onclick="changeCycleMonth(1)">▶</button></div><div class="cycle-weekdays"><div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div></div><div class="cycle-days" id="cycleDays"></div></div><div style="margin-top:20px"><div style="font-weight:600;color:#667eea;margin-bottom:10px">История:</div><div id="cyclesList"></div></div></div>
+</div></div>
+
+<!-- WORKOUT -->
+<div id="tab-workout" class="tab-content">
+<div class="sub-tabs"><button class="sub-tab active" onclick="switchSubTab('strength',event)">💪 Тренировки</button><button class="sub-tab" onclick="switchSubTab('cardio',event)">🏃 Кардио</button></div>
+<div id="sub-strength" class="sub-content active"><div class="card"><div class="card-title">Новая тренировка</div><div class="form-group"><label>Название</label><input type="text" id="workoutName" placeholder="День груди"></div><div id="exercisesList"></div><button class="btn btn-add" onclick="addExercise()">+ Упражнение</button><div class="form-group" style="margin-top:20px"><label>Самочувствие: <span id="feelingValue">5</span></label><input type="range" id="workoutFeeling" min="1" max="10" value="5" oninput="$('feelingValue').textContent=this.value"></div><div class="form-group"><label>Калории</label><input type="number" id="workoutCalories" placeholder="300"></div><div class="form-group"><label>Заметки</label><textarea id="workoutNotes" rows="3" placeholder="Как прошла тренировка?"></textarea></div><button class="btn btn-primary" onclick="saveWorkoutAction()">Сохранить</button></div></div>
+<div id="sub-cardio" class="sub-content"><div class="card"><div class="card-title">Кардио</div><div class="form-group"><label>Тип</label><select id="cardioType"><option>Бег</option><option>Бассейн</option><option>Велосипед</option><option>Ходьба</option></select></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="form-group"><label>Км</label><input type="number" id="cardioDistance" step="0.1" placeholder="5.0"></div><div class="form-group"><label>Мин</label><input type="number" id="cardioDuration" placeholder="30"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="form-group"><label>Шаги</label><input type="number" id="cardioSteps" placeholder="6000"></div><div class="form-group"><label>Калории</label><input type="number" id="cardioCalories" placeholder="300"></div></div><div class="form-group"><label>Пульс</label><input type="number" id="cardioHeartRate" placeholder="140"></div><button class="btn btn-primary" onclick="saveCardioAction()">Сохранить</button></div></div>
+</div>
+
+<!-- SLEEP -->
+<div id="tab-sleep" class="tab-content"><div class="main-grid">
+<div class="card">
+<div class="card-title">😴 Записать сон</div>
+<div class="sleep-form-grid">
+<div class="form-group"><label>Дата начала</label><input type="date" id="sleepStartDate"></div>
+<div class="form-group"><label>Дата окончания</label><input type="date" id="sleepEndDate"></div>
+</div>
+<div class="sleep-time-grid">
+<div class="form-group"><label>Засыпание</label><input type="time" id="sleepStartTime"></div>
+<div class="form-group"><label>Пробуждение</label><input type="time" id="sleepEndTime"></div>
+</div>
+<div class="form-group">
+<label>Качество: <span id="sleepQualityValue">5</span></label>
+<input type="range" id="sleepQualityInput" min="1" max="10" value="5" oninput="$('sleepQualityValue').textContent=this.value">
+</div>
+<div class="form-group sleep-tag-autocomplete">
+<label>Теги</label>
+<div class="sleep-tag-input">
+<input type="text" id="newSleepTag" placeholder="Введите..." autocomplete="off" oninput="searchSleepTags(this.value)" onfocus="searchSleepTags(this.value)">
+<button class="btn btn-add" onclick="addSleepTagManual()" style="width:auto;padding:12px 20px">+</button>
+</div>
+<div id="sleepTagDropdown" class="sleep-tag-dropdown hidden"></div>
+<div class="sleep-tags-list" id="sleepTagsList"></div>
+</div>
+<div class="form-group"><label>Комментарии</label><textarea id="sleepComments" rows="3" placeholder="Как спалось?"></textarea></div>
+<div class="form-group"><label>Описание сна</label><textarea id="sleepDescription" rows="4" placeholder="Опишите свой сон..."></textarea></div>
+<button class="btn btn-primary" onclick="saveSleep()">Сохранить</button>
+</div>
+<div class="card"><div class="card-title">📅 История</div><div id="sleepHistoryList"></div></div>
+</div></div>
+
+<!-- SETTINGS -->
+<div id="tab-settings" class="tab-content">
+<div class="card"><div class="card-title">⚙️ Цели</div><div class="form-group"><label>Калории</label><input type="number" id="goalCalories"></div><div class="form-group"><label>Белки</label><input type="number" id="goalProtein"></div><div class="form-group"><label>Жиры</label><input type="number" id="goalFat"></div><div class="form-group"><label>Углеводы</label><input type="number" id="goalCarbs"></div><div class="form-group"><label>Тренировок/нед</label><input type="number" id="goalWorkouts"></div><div class="form-group"><label>Шагов/день</label><input type="number" id="goalSteps"></div><div class="form-group"><label>Км/день</label><input type="number" id="goalKm" step="0.5"></div><div class="form-group"><label>Воды (мл)</label><input type="number" id="goalWater"></div><div class="form-group"><label>Начальный вес</label><input type="number" id="initialWeight" step="0.1"></div><div class="form-group"><label>Цель</label><div class="weight-mode-toggle"><label class="weight-mode-option"><input type="radio" name="weightMode" value="lose" checked><span>🔥 Похудение</span></label><label class="weight-mode-option"><input type="radio" name="weightMode" value="gain"><span>💪 Набор</span></label></div></div><button class="btn btn-primary" onclick="saveGoals()">Сохранить</button></div>
+<div class="card"><div class="card-title">🎯 Управление привычками</div><div id="habitsManageList"></div><button class="btn btn-add" onclick="openHabitModal()">+ Добавить</button></div>
+</div>
+
+<!-- ADMIN -->
+<div id="tab-admin" class="tab-content">
+<div class="main-grid">
+<div class="card card-full"><div class="card-title">📊 Статистика системы</div><div class="admin-stat-grid" id="adminStatsGrid"></div></div>
+<div class="card card-full"><div class="card-title">👥 Пользователи</div><div id="adminUsersList"></div></div>
+</div>
+</div>
+</div>
+
+<div id="habitModal" class="modal"><div class="modal-content"><div class="modal-header"><div class="modal-title" id="habitModalTitle">Новая привычка</div><button class="modal-close" onclick="closeHabitModal()">×</button></div><div class="form-group"><label>Название</label><input type="text" id="habitName"></div><div class="form-group"><label>Иконка</label><input type="text" id="habitIcon" placeholder="✅" maxlength="4"></div><div class="form-group"><label>Частота</label><select id="habitFrequency"><option value="daily">Ежедневно</option><option value="weekly">Еженедельно</option></select></div><input type="hidden" id="habitId"><button class="btn btn-primary" onclick="saveHabitAction()">Сохранить</button></div></div>
+
+<div class="bottom-nav" id="bottomNav">
+<div class="nav-item active" onclick="switchTab('home')"><div class="nav-icon">🏡</div><div class="nav-label">Главная</div></div>
+<div class="nav-item" onclick="switchTab('food')"><div class="nav-icon">🥗</div><div class="nav-label">Еда</div></div>
+<div class="nav-item" onclick="switchTab('workout')"><div class="nav-icon">🏋️</div><div class="nav-label">Тренировки</div></div>
+<div class="nav-item" onclick="switchTab('sleep')"><div class="nav-icon">😴</div><div class="nav-label">Сон</div></div>
+<div class="nav-item" onclick="switchTab('health')"><div class="nav-icon">💊</div><div class="nav-label">Здоровье</div></div>
+<div class="nav-item" onclick="switchTab('settings')"><div class="nav-icon">⚙️</div><div class="nav-label">Настройки</div></div>
+</div>
+</div>
+
+<script>
+// ============================================
+// API CONFIG
+// ============================================
+// ⚠️ ВАЖНО: После деплоя Apps Script замените этот URL на ваш Web App URL
+const API_URL = 'https://script.google.com/macros/s/AKfycbxdCabqIIJqO4MukEI0BjDFwUBjqe1DoKmJPj7-XQ1qZGEx7nL58w0_N0cgk9ujZEZ-/exec';
+
+// ============================================
+// STATE
+// ============================================
+let currentUser = null;
+let settings = {};
+let currentDate = new Date();
+let periodChart = null;
+let weightChart = null;
+let ingredientCount = 0;
+let exerciseCount = 0;
+let selectedMealType = 'Завтрак';
+let currentSleepTags = [];
+let editingSleepId = null;
+let cycleViewDate = new Date();
+let selectedStartDate = null;
+let selectedEndDate = null;
+let sleepTagsDatabase = [];
+let chartsLoaded = false;
+let searchTimer = null;
+let sleepTagSearchTimer = null;
+
+const MEAL_ICONS = {'Завтрак':'🍳','Обед':'🍲','Ужин':'🌙','Перекус':'🍏'};
+const MEAL_ORDER = ['Завтрак','Обед','Ужин','Перекус'];
+const HYGIENE_MAP = {'Ванная':'bath','Душ':'shower','Бассейн':'pool','Сауна':'sauna','Баня':'banya','Зубы':'teeth'};
+const TAB_TITLES = {home:'🏡 Главная',food:'🥗 Еда',workout:'🏋️ Тренировки',sleep:'😴 Сон',health:'💊 Здоровье',settings:'⚙️ Настройки',admin:'🔧 Админ-панель'};
+
+const $ = id => document.getElementById(id);
+const $$ = s => document.querySelectorAll(s);
+
+// ============================================
+// API CALL (fetch instead of google.script.run)
+// ============================================
+async function call(action, params = {}) {
+  const url = new URL(API_URL);
+  url.searchParams.set('action', action);
+  url.searchParams.set('email', currentUser.email);
+  
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === undefined || v === null) return;
+    if (typeof v === 'object' && !(v instanceof Date)) {
+      url.searchParams.set(k, JSON.stringify(v));
+    } else if (k === 'data') {
+      url.searchParams.set('data', JSON.stringify(v));
+    } else {
+      url.searchParams.set(k, String(v));
+    }
+  });
+  
+  const response = await fetch(url.toString());
+  if (!response.ok) throw new Error('Network error: ' + response.status);
+  const data = await response.json();
+  if (data && data.error) throw new Error(data.error);
+  return data;
+}
+
+// ============================================
+// AUTH
+// ============================================
+function login() {
+  const email = $('email-input').value.trim().toLowerCase();
+  if (!email || !email.includes('@')) {
+    alert('Введите корректный email');
+    return;
+  }
+  currentUser = { email };
+  localStorage.setItem('healthTrackerUser', email);
+  initApp();
+}
+
+function logout() {
+  localStorage.removeItem('healthTrackerUser');
+  currentUser = null;
+  $('app').classList.add('hidden');
+  $('login-screen').classList.remove('hidden');
+  $('email-input').value = '';
+}
+
+async function initApp() {
+  $('login-screen').classList.add('hidden');
+  $('app').classList.remove('hidden');
+  
+  try {
+    // Initialize database structure
+    await call('setup');
+    
+    const user = await call('getCurrentUserInfo');
+    currentUser = { email: user.email, name: user.name, role: user.role, isAdmin: user.isAdmin };
+    
+    $('userInfoBar').innerHTML = `${user.name} <span class="role-badge">${user.isAdmin ? '👑 Админ' : '👤 Пользователь'}</span> <a href="#" onclick="logout();return false;" style="color:#fff;margin-left:10px;font-size:11px;opacity:.7">Выйти</a>`;
+    
+    if (user.isAdmin) {
+      const adminBtn = document.createElement('div');
+      adminBtn.className = 'nav-item';
+      adminBtn.onclick = () => switchTab('admin');
+      adminBtn.innerHTML = '<div class="nav-icon">🔧</div><div class="nav-label">Админ</div>';
+      $('bottomNav').appendChild(adminBtn);
+    }
+    
+    updateDateDisplay();
+    loadHomeFast();
+    loadHomeSlow();
+    loadActivityStats();
+  } catch (e) {
+    alert('Ошибка инициализации: ' + e.message);
+    logout();
+  }
+}
+
+// Auto-login if saved
+window.onload = () => {
+  const saved = localStorage.getItem('healthTrackerUser');
+  if (saved && saved.includes('@')) {
+    currentUser = { email: saved };
+    initApp();
+  }
+};
+
+// ============================================
+// DATE NAV
+// ============================================
+const updateDateDisplay = () => {
+  $('currentDate').textContent = currentDate.toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' });
+};
+const changeDate = d => {
+  currentDate.setDate(currentDate.getDate() + d);
+  updateDateDisplay();
+  loadHomeFast();
+  loadHomeSlow();
+  loadActivityStats();
+};
+
+// ============================================
+// TAB SWITCHING
+// ============================================
+function switchTab(t, evt) {
+  $$('.tab-content').forEach(x => x.classList.remove('active'));
+  $$('.nav-item').forEach(x => x.classList.remove('active'));
+  $('tab-' + t).classList.add('active');
+  if (evt && evt.currentTarget) evt.currentTarget.classList.add('active');
+  else $$('.nav-item').forEach(x => { if (x.getAttribute('onclick') && x.getAttribute('onclick').includes("'" + t + "'")) x.classList.add('active'); });
+  $('pageTitle').textContent = TAB_TITLES[t] || t;
+  if (t === 'home') { loadHomeFast(); loadHomeSlow(); }
+  else if (t === 'health') { loadSupplementsDb(); loadDailyState(); loadMenstrualCycles(); renderCycleCalendar(); }
+  else if (t === 'sleep') { loadSleepTagsDatabase(); loadSleepHistory(); }
+  else if (t === 'settings') { loadSettings(); loadHabitsManageList(); }
+  else if (t === 'admin') loadAdminPanel();
+}
+const switchTabByName = switchTab;
+function switchSubTab(t, e) {
+  $$('.sub-content').forEach(x => x.classList.remove('active'));
+  $$('.sub-tab').forEach(x => x.classList.remove('active'));
+  $('sub-' + t).classList.add('active');
+  if (e && e.currentTarget) e.currentTarget.classList.add('active');
+}
+
+// ============================================
+// HOME DATA LOADING
+// ============================================
+function loadHomeFast() {
+  const ds = currentDate.toLocaleDateString('ru-RU');
+  call('getHomeDataFast', { dateStr: ds }).then(d => {
+    if (d.error) return;
+    settings = d.settings;
+    renderFood(d.food);
+    renderActivities({ activities: d.activities });
+    renderChecklist(d.checklist);
+    renderWater(d.water);
+    renderHygiene(d.hygiene);
+    renderLastSleep(d.lastSleep);
+    renderHabits(d.habits, d.habitsCompleted);
+    renderVitamins(d.vitamins);
+    renderWorkoutsRing(d.workoutsThisWeek);
+    if (!chartsLoaded) { chartsLoaded = true; showRange('week', document.querySelector('.range-btn')); loadWeightChart(); }
+  }).catch(e => console.error('loadHomeFast:', e));
+}
+function loadHomeSlow() {
+  $('currentWeightDisplay').innerHTML = '<div class="skeleton" style="width:80px;height:48px;display:inline-block"></div>';
+  call('getHomeDataSlow', { dateStr: currentDate.toLocaleDateString('ru-RU'), initialWeight: settings.initialWeight || 0 })
+    .then(d => { renderWeight(d.weight); })
+    .catch(e => console.error('loadHomeSlow:', e));
+}
+function loadSettings() {
+  call('getSettings').then(s => {
+    settings = s;
+    $('goalCalories').value = s.calories || 2000;
+    $('goalProtein').value = s.protein || 150;
+    $('goalFat').value = s.fat || 70;
+    $('goalCarbs').value = s.carbs || 200;
+    $('goalWorkouts').value = s.workoutsPerWeek || 3;
+    $('goalSteps').value = s.stepsPerDay || 10000;
+    $('goalKm').value = s.kmPerDay || 5;
+    $('goalWater').value = s.waterGoal || 2000;
+    $('initialWeight').value = s.initialWeight || '';
+    const mode = s.weightMode || 'lose';
+    const radio = document.querySelector(`input[name="weightMode"][value="${mode}"]`);
+    if (radio) radio.checked = true;
+  });
+}
+
+// ============================================
+// RENDERS
+// ============================================
+function renderFood(food) {
+  let tC = 0, tP = 0, tF = 0, tCarb = 0;
+  const el = $('todayFoodList'); el.innerHTML = '';
+  const groups = {};
+  MEAL_ORDER.forEach(m => groups[m] = []);
+  food.forEach(i => { const t = i.mealType || 'Перекус'; if (!groups[t]) groups[t] = []; groups[t].push(i); });
+  let any = false;
+  MEAL_ORDER.forEach(mt => {
+    const items = groups[mt];
+    if (!items || !items.length) return;
+    any = true;
+    let gk = 0;
+    items.forEach(i => gk += i.calories);
+    const div = document.createElement('div');
+    div.className = 'meal-group';
+    div.innerHTML = `<div class="meal-group-header"><span class="meal-group-icon">${MEAL_ICONS[mt] || '🍽️'}</span><span>${mt}</span><span class="meal-group-total">${gk} ккал</span></div>` +
+      items.map(i => { tC += i.calories; tP += i.protein; tF += i.fat; tCarb += i.carbs; return `<div class="meal-item"><div class="meal-item-name">${i.name}</div><div class="meal-item-details">${i.calories} ккал | Б:${i.protein} Ж:${i.fat} У:${i.carbs}${i.grams ? ' • ' + i.grams + 'г' : ''}</div></div>`; }).join('');
+    el.appendChild(div);
+  });
+  if (!any) el.innerHTML = '<div style="color:#999;text-align:center;padding:20px">Нет записей</div>';
+  const pct = Math.min(100, Math.round(tC / settings.calories * 100));
+  $('caloriesCircle').setAttribute('stroke-dasharray', pct + ', 100');
+  $('caloriesPercent').textContent = pct + '%';
+  $('totalCalories').textContent = tC;
+  $('totalProtein').textContent = Math.round(tP);
+  $('totalFat').textContent = Math.round(tF);
+  $('totalCarbs').textContent = Math.round(tCarb);
+  const sb = (id, v, g, tid) => { const p = Math.min(100, Math.round(v / g * 100)); $(id).style.width = p + '%'; $(tid).textContent = Math.round(v) + '/' + g + 'г'; };
+  sb('proteinBar', tP, settings.protein, 'proteinText');
+  sb('fatBar', tF, settings.fat, 'fatText');
+  sb('carbsBar', tCarb, settings.carbs, 'carbsText');
+}
+function renderActivities(d) {
+  const c = $('activityCard'), el = $('activityContent');
+  if (!d.activities || !d.activities.length) { c.style.display = 'none'; return; }
+  c.style.display = 'block';
+  el.innerHTML = d.activities.map(a => a.type === 'workout' ?
+    `<div class="activity-card"><h3>🏋️ ${a.name}</h3><p>Упр: ${a.exercises} | ${a.calories} ккал | ${a.feeling}/10</p></div>` :
+    `<div class="activity-card" style="background:linear-gradient(135deg,#1b7ee4,#1be4e4)"><h3>🏃 ${a.activityType}</h3><p>${a.distance} км | ${a.duration} мин | ${a.calories} ккал</p></div>`).join('');
+}
+function renderChecklist(c) {
+  const s = (id, v) => { const e = $(id); v ? e.classList.add('checked') : e.classList.remove('checked'); };
+  s('check-health', c.health); s('check-supplements', c.supplements); s('check-teeth', c.teeth);
+}
+function renderWater(a) {
+  const g = settings.waterGoal || 2000, p = Math.min(100, Math.round(a / g * 100));
+  $('waterRing').setAttribute('stroke-dasharray', p + ', 100');
+  $('waterPercent').textContent = p + '%';
+  $('waterAmount').textContent = a;
+  $('waterGoalDisplay').textContent = g;
+}
+function renderHygiene(completed) {
+  Object.values(HYGIENE_MAP).forEach(id => { const b = $('hygiene-' + id); if (!b) return; const t = Object.keys(HYGIENE_MAP).find(k => HYGIENE_MAP[k] === id); b.classList.toggle('completed', completed.includes(t)); });
+}
+function renderWeight(d) {
+  if (!d) { $('currentWeightDisplay').textContent = '-'; return; }
+  if (d.currentWeight != null) {
+    $('currentWeightDisplay').textContent = d.currentWeight.toFixed(1);
+    const ce = $('weightChange');
+    if (ce && d.changePercent != null) {
+      const p = parseFloat(d.changePercent), ig = (settings.weightMode || 'lose') === 'gain';
+      let ar, cl;
+      if (p > 0) { ar = '↑'; cl = ig ? '#1be47d' : '#e41b6f'; }
+      else if (p < 0) { ar = '↓'; cl = ig ? '#e41b6f' : '#1be47d'; }
+      else { ar = '→'; cl = '#999'; }
+      ce.style.color = cl; ce.textContent = ar + ' ' + Math.abs(p) + '%';
+    } else if (ce) ce.textContent = '';
+  } else $('currentWeightDisplay').textContent = '-';
+  const h = $('weightHistory');
+  h.innerHTML = d.history && d.history.length ?
+    d.history.map(x => `<div class="weight-history-item"><span>${x.dateStr}</span><span style="font-weight:600">${x.weight} кг</span></div>`).join('') :
+    '<div style="color:#999;text-align:center;padding:10px">Нет записей</div>';
+}
+function renderLastSleep(s) {
+  if (!s) { $('sleepDuration').textContent = '-'; $('sleepQualityMini').textContent = '-'; $('sleepDateRange').textContent = '-'; $('sleepTagsContainer').innerHTML = ''; return; }
+  $('sleepDuration').textContent = s.duration ? s.duration.toFixed(1) : '-';
+  $('sleepQualityMini').textContent = s.quality || '-';
+  const st = new Date(s.startDate), en = new Date(s.endDate);
+  $('sleepDateRange').textContent = st.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }) + ' → ' + en.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+  $('sleepTagsContainer').innerHTML = s.tags && s.tags.length ? s.tags.map(t => `<span class="sleep-mini-tag">${t}</span>`).join('') : '';
+}
+function renderHabits(db, completed) {
+  const g = $('habitsGrid');
+  if (!db || !db.length) { g.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#999;padding:20px;cursor:pointer" onclick="switchTabByName(\'settings\')">Добавьте привычки в настройках ✨</div>'; return; }
+  g.innerHTML = db.map(h => { const done = completed.includes(String(h.id)); return `<div class="habit-item ${done ? 'completed' : ''}" onclick="toggleHabit('${h.id}',${done})"><div class="habit-icon">${h.icon}</div><div class="habit-name">${h.name}</div><div class="habit-streak" id="streak-${h.id}">🔥 ...</div></div>`; }).join('');
+  db.forEach(h => call('getHabitStreak', { id: h.id }).then(s => { const e = $('streak-' + h.id); if (e) e.textContent = '🔥 ' + s.currentStreak + ' дн.'; }));
+}
+function renderVitamins(v) {
+  const c = $('vitaminsCard'), b = $('vitaminsBars');
+  if (!Object.keys(v).length) { c.style.display = 'none'; return; }
+  c.style.display = 'block';
+  const colors = ['#1be47d', '#1b7ee4', '#e41b6f', '#f5a623', '#9c27b0', '#00bcd4'];
+  b.innerHTML = Object.entries(v).map(([n, a], i) => `<div class="vitamin-item"><div class="macro-bar"><div class="macro-label"><span>${n}</span><span>${a} мг</span></div><div class="bar-bg"><div class="bar-fill" style="width:100%;background:${colors[i % colors.length]}"></div></div></div></div>`).join('');
+}
+function renderWorkoutsRing(c) {
+  const g = settings.workoutsPerWeek || 3, p = Math.min(100, Math.round(c / g * 100));
+  $('workoutsCircle').setAttribute('stroke-dasharray', p + ', 100');
+  $('workoutsText').textContent = c + '/' + g;
+}
+
+// ============================================
+// ACTIVITY
+// ============================================
+function switchActivityPeriod(p, b) { $$('.activity-period-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); loadActivityStats(); }
+function loadActivityStats() {
+  const activeBtn = document.querySelector('.activity-period-btn.active');
+  const period = activeBtn && activeBtn.textContent === 'Неделя' ? 'week' : activeBtn && activeBtn.textContent === 'Месяц' ? 'month' : 'year';
+  call('getStepsAndDistance', { period }).then(d => {
+    const sg = (settings.stepsPerDay || 10000) * d.daysInPeriod, kg = (settings.kmPerDay || 5) * d.daysInPeriod;
+    const sp = Math.min(100, Math.round(d.steps / sg * 100)), kp = Math.min(100, Math.round(d.km / kg * 100));
+    $('stepsRing').setAttribute('stroke-dasharray', sp + ', 100');
+    $('kmRing').setAttribute('stroke-dasharray', kp + ', 100');
+    $('stepsPercent').textContent = sp + '%';
+    $('kmDisplay').textContent = d.km + ' км';
+    $('stepsDisplay').textContent = d.steps.toLocaleString('ru-RU');
+    $('kmDisplay2').textContent = d.km;
+    $('stepsGoal').textContent = 'цель: ' + sg.toLocaleString('ru-RU');
+    $('kmGoal').textContent = 'цель: ' + kg + ' км';
+  });
+}
+
+// ============================================
+// FOOD
+// ============================================
+function debounceSearch(q) { clearTimeout(searchTimer); searchTimer = setTimeout(() => searchFood(q), 300); }
+function searchFood(q) {
+  const l = $('autocompleteList');
+  if (q.length < 2) { l.classList.add('hidden'); return; }
+  call('searchFoodDatabase', { query: q }).then(r => {
+    if (!r.length) { l.classList.add('hidden'); return; }
+    l.innerHTML = r.map(x => `<div class="autocomplete-item" onclick="selectFood('${x.name.replace(/'/g, "\\'")}',${x.calories},${x.protein},${x.fat},${x.carbs})"><strong>${x.name}</strong><br><small>${x.calories} ккал | Б:${x.protein} Ж:${x.fat} У:${x.carbs}</small></div>`).join('');
+    l.classList.remove('hidden');
+  });
+}
+function selectFood(n, k, p, f, c) { $('simpleName').value = n; $('simpleCalories').value = k; $('simpleProtein').value = p; $('simpleFat').value = f; $('simpleCarbs').value = c; $('autocompleteList').classList.add('hidden'); }
+function selectMealType(b) { $$('.meal-type-selector .meal-type-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); selectedMealType = b.dataset.meal; }
+function saveSimpleFood() {
+  const n = $('simpleName').value; if (!n) { alert('Введите название'); return; }
+  const g = parseFloat($('simpleGrams').value) || 100, f = g / 100;
+  call('saveFood', { data: { name: n, calories: Math.round(parseFloat($('simpleCalories').value) * f), protein: Math.round(parseFloat($('simpleProtein').value) * f * 10) / 10, fat: Math.round(parseFloat($('simpleFat').value) * f * 10) / 10, carbs: Math.round(parseFloat($('simpleCarbs').value) * f * 10) / 10, grams: g, mealType: selectedMealType, addToDatabase: $('simpleAddToDb').checked } }).then(() => { alert('Добавлено!'); ['simpleName', 'simpleGrams', 'simpleCalories', 'simpleProtein', 'simpleFat', 'simpleCarbs'].forEach(id => $(id).value = ''); loadHomeFast(); });
+}
+function addIngredient() {
+  ingredientCount++;
+  const id = ingredientCount, div = document.createElement('div');
+  div.className = 'ingredient-row'; div.id = 'ingredient-' + id;
+  div.innerHTML = `<button class="ingredient-remove" onclick="removeIngredient(${id})">×</button><div style="display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:10px"><input type="text" placeholder="Продукт" class="ing-name"><input type="number" placeholder="Вес(г)" class="ing-weight" oninput="calcRecipe()"></div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px"><input type="number" placeholder="Ккал" class="ing-kcal" oninput="calcRecipe()"><input type="number" placeholder="Б" class="ing-p" oninput="calcRecipe()"><input type="number" placeholder="Ж" class="ing-f" oninput="calcRecipe()"><input type="number" placeholder="У" class="ing-c" oninput="calcRecipe()"></div>`;
+  $('ingredientsList').appendChild(div);
+}
+function removeIngredient(id) { const e = $('ingredient-' + id); if (e) e.remove(); calcRecipe(); }
+function calcRecipe() {
+  let tk = 0, tp = 0, tf = 0, tc = 0;
+  for (let i = 1; i <= ingredientCount; i++) {
+    const r = $('ingredient-' + i); if (!r) continue;
+    const g = cls => parseFloat(r.querySelector(cls).value) || 0;
+    const w = g('.ing-weight'), f = w / 100;
+    tk += f * g('.ing-kcal'); tp += f * g('.ing-p'); tf += f * g('.ing-f'); tc += f * g('.ing-c');
+  }
+  const t = $('recipeTotal');
+  if (tk > 0) { t.classList.remove('hidden'); $('recipeTotals').innerHTML = `🔥 ${Math.round(tk)} ккал | Б:${Math.round(tp)} Ж:${Math.round(tf)} У:${Math.round(tc)}`; }
+  else t.classList.add('hidden');
+  return { tk, tp, tf, tc };
+}
+function saveRecipe() {
+  const n = $('recipeName').value; if (!n) { alert('Название?'); return; }
+  const t = calcRecipe(); if (t.tk === 0) { alert('Добавьте ингредиенты'); return; }
+  call('saveFood', { data: { name: n, calories: Math.round(t.tk), protein: Math.round(t.tp * 10) / 10, fat: Math.round(t.tf * 10) / 10, carbs: Math.round(t.tc * 10) / 10, grams: 0, mealType: 'Перекус', addToDatabase: $('addToDb').checked } }).then(() => { alert('Сохранено!'); $('recipeName').value = ''; $('ingredientsList').innerHTML = ''; $('recipeTotal').classList.add('hidden'); ingredientCount = 0; loadHomeFast(); });
+}
+
+// ============================================
+// GOALS
+// ============================================
+function saveGoals() {
+  const s = { calories: parseInt($('goalCalories').value) || 2000, protein: parseInt($('goalProtein').value) || 150, fat: parseInt($('goalFat').value) || 70, carbs: parseInt($('goalCarbs').value) || 200, workoutsPerWeek: parseInt($('goalWorkouts').value) || 3, stepsPerDay: parseInt($('goalSteps').value) || 10000, kmPerDay: parseFloat($('goalKm').value) || 5, waterGoal: parseInt($('goalWater').value) || 2000, initialWeight: parseFloat($('initialWeight').value) || 0, weightMode: document.querySelector('input[name="weightMode"]:checked').value };
+  call('saveSettings', { data: s }).then(() => { settings = s; alert('Сохранено!'); chartsLoaded = false; loadHomeFast(); loadHomeSlow(); loadActivityStats(); });
+}
+
+// ============================================
+// CHARTS
+// ============================================
+function showRange(range, btn) {
+  if (btn) { $$('.range-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
+  const now = new Date(), sd = new Date();
+  if (range === 'week') sd.setDate(now.getDate() - 7);
+  else if (range === 'month') sd.setMonth(now.getMonth() - 1);
+  else sd.setFullYear(now.getFullYear() - 1);
+  const si = sd.toISOString(), ei = now.toISOString();
+  call('getFoodByDateRange', { startDate: si, endDate: ei }).then(s => { $('sumCalories').textContent = s.calories; $('sumProtein').textContent = s.protein; $('sumFat').textContent = s.fat; $('sumCarbs').textContent = s.carbs; $('sumDays').textContent = s.days; });
+  call('getDailyCaloriesForPeriod', { startDate: si, endDate: ei }).then(d => {
+    const ctx = $('periodChart').getContext('2d');
+    if (periodChart) periodChart.destroy();
+    periodChart = new Chart(ctx, { type: 'line', data: { labels: d.dates, datasets: [{ label: 'Калории', data: d.calories, borderColor: '#667eea', backgroundColor: 'rgba(102,126,234,0.1)', borderWidth: 2, fill: true, tension: .4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#333' } } }, scales: { x: { ticks: { color: '#999' }, grid: { color: '#e0e0e0' } }, y: { beginAtZero: true, ticks: { color: '#999' }, grid: { color: '#e0e0e0' } } } } });
+  });
+}
+function loadWeightChart() {
+  call('getWeightHistoryForChart', { days: 90 }).then(d => {
+    const ctx = $('weightChart').getContext('2d');
+    if (weightChart) weightChart.destroy();
+    if (!d.dates || !d.dates.length) return;
+    weightChart = new Chart(ctx, { type: 'line', data: { labels: d.dates, datasets: [{ label: 'Вес (кг)', data: d.weights, borderColor: '#667eea', backgroundColor: 'rgba(102,126,234,0.15)', borderWidth: 3, fill: true, tension: .3, pointBackgroundColor: '#667eea', pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#333' } } }, scales: { x: { ticks: { color: '#999', maxRotation: 45 }, grid: { color: '#e0e0e0' } }, y: { beginAtZero: false, ticks: { color: '#999', callback: v => v + ' кг' }, grid: { color: '#e0e0e0' } } } } });
+  });
+}
+
+// ============================================
+// WORKOUTS
+// ============================================
+function addExercise() {
+  exerciseCount++;
+  const id = exerciseCount, div = document.createElement('div');
+  div.className = 'exercise-row'; div.id = 'exercise-' + id;
+  div.innerHTML = `<button class="exercise-remove" onclick="removeExercise(${id})">×</button><div class="form-group autocomplete-container"><label>Упражнение</label><input type="text" id="exName-${id}" placeholder="Начните вводить..." oninput="searchEx(${id})"><div id="exAc-${id}" class="autocomplete-list hidden"></div></div><div class="form-group"><label>Количество подходов</label><input type="number" id="exSetsCount-${id}" placeholder="4" min="1" max="20" oninput="generateSets(${id})"></div><div id="exSetsContainer-${id}"></div>`;
+  $('exercisesList').appendChild(div);
+}
+function generateSets(exId) {
+  const count = parseInt($('exSetsCount-' + exId).value) || 0;
+  const container = $('exSetsContainer-' + exId); container.innerHTML = ''; if (count <= 0) return;
+  for (let i = 1; i <= count; i++) {
+    const setDiv = document.createElement('div');
+    setDiv.style.cssText = 'display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px;padding:8px;background:#f8f9fa;border-radius:8px;';
+    setDiv.innerHTML = `<div style="font-weight:600;color:#667eea;font-size:13px">Подход ${i}</div><input type="number" id="exSetReps-${exId}-${i}" placeholder="Повторы" style="padding:8px;font-size:13px"><input type="number" id="exSetWeight-${exId}-${i}" placeholder="Вес (кг)" step="0.5" style="padding:8px;font-size:13px">`;
+    container.appendChild(setDiv);
+  }
+}
+function removeExercise(id) { const e = $('exercise-' + id); if (e) e.remove(); }
+function searchEx(id) {
+  const inp = $('exName-' + id), l = $('exAc-' + id);
+  if (inp.value.length < 2) { l.classList.add('hidden'); return; }
+  call('searchExerciseDatabase', { query: inp.value }).then(r => {
+    l.innerHTML = r.length ? r.map(x => `<div class="autocomplete-item" onclick="$('exName-${id}').value='${x.name.replace(/'/g, "\\'")}';$('exAc-${id}').classList.add('hidden')"><strong>${x.name}</strong></div>`).join('') : '<div class="autocomplete-item" style="color:#999">Не найдено</div>';
+    l.classList.remove('hidden');
+  });
+}
+function saveWorkoutAction() {
+  const n = $('workoutName').value; if (!n) { alert('Название?'); return; }
+  const ex = [];
+  for (let i = 1; i <= exerciseCount; i++) {
+    const r = $('exercise-' + i); if (!r) continue;
+    const nm = $('exName-' + i).value; if (!nm) continue;
+    const setsCount = parseInt($('exSetsCount-' + i).value) || 0;
+    const sets = [];
+    for (let j = 1; j <= setsCount; j++) {
+      const reps = $('exSetReps-' + i + '-' + j).value;
+      const weight = $('exSetWeight-' + i + '-' + j).value;
+      if (reps || weight) sets.push({ reps: parseInt(reps) || 0, weight: parseFloat(weight) || 0 });
+    }
+    if (sets.length > 0) ex.push({ name: nm, sets });
+  }
+  if (!ex.length) { alert('Добавьте упражнение с подходами'); return; }
+  call('saveWorkout', { data: { name: n, exercises: ex, calories: $('workoutCalories').value, feeling: $('workoutFeeling').value, notes: $('workoutNotes').value } }).then(() => { alert('Сохранено!'); $('workoutName').value = ''; $('workoutCalories').value = ''; $('workoutNotes').value = ''; $('exercisesList').innerHTML = ''; exerciseCount = 0; loadHomeFast(); loadActivityStats(); });
+}
+function saveCardioAction() {
+  call('saveCardio', { data: { type: $('cardioType').value, distance: $('cardioDistance').value, duration: $('cardioDuration').value, steps: $('cardioSteps').value, calories: $('cardioCalories').value, avgHeartRate: $('cardioHeartRate').value } }).then(() => { alert('Сохранено!'); ['cardioDistance', 'cardioDuration', 'cardioSteps', 'cardioCalories', 'cardioHeartRate'].forEach(id => $(id).value = ''); loadHomeFast(); loadActivityStats(); });
+}
+
+// ============================================
+// SUPPLEMENTS
+// ============================================
+function loadSupplementsDb() {
+  call('getSupplementsDatabase').then(db => {
+    const s = $('supplementSelect'); s.innerHTML = '<option value="">-- Выберите --</option>';
+    db.forEach(x => { const o = document.createElement('option'); o.value = x.name; o.textContent = x.name; o.dataset.comp = x.composition; s.appendChild(o); });
+  });
+}
+function showSupplementDetails() {
+  const s = $('supplementSelect'), o = s.options[s.selectedIndex], d = $('supplementDetails');
+  if (o && o.dataset.comp) { d.style.display = 'block'; $('supplementCompositionDisplay').textContent = o.dataset.comp; } else d.style.display = 'none';
+}
+function saveSupplement() {
+  const n = $('supplementName').value, c = $('supplementComposition').value; if (!n) { alert('Название?'); return; }
+  call('saveSupplementToDatabase', { data: { name: n, composition: c } }).then(() => { alert('Сохранено!'); $('supplementName').value = ''; $('supplementComposition').value = ''; loadSupplementsDb(); });
+}
+function takeSupplementFromList() {
+  const n = $('supplementSelect').value; if (!n) { alert('Выберите'); return; }
+  call('takeSupplement', { name: n, date: currentDate.toLocaleDateString('ru-RU') }).then(() => { alert('Отмечено!'); loadHomeFast(); });
+}
+
+// ============================================
+// DAILY STATE
+// ============================================
+function saveDailyStateAction() {
+  call('saveDailyState', { data: { cravingSweet: $('cravingSweet').value, cravingSalty: $('cravingSalty').value, wellbeing: $('wellbeing').value, focus: $('focus').value, stress: $('stress').value, energy: $('energy').value, mood: $('mood').value } }).then(() => { alert('Сохранено!'); loadHomeFast(); });
+}
+function loadDailyState() {
+  call('getStateForDate', { dateStr: currentDate.toLocaleDateString('ru-RU') }).then(s => {
+    if (!s) return;
+    ['cravingSweet', 'cravingSalty', 'wellbeing', 'focus', 'stress', 'energy', 'mood'].forEach(k => { $(k).value = s[k]; $(k + 'Value').textContent = s[k]; });
+  });
+}
+
+// ============================================
+// WATER/HYGIENE
+// ============================================
+function addWater(t) { call('saveWater', { type: t, amount: 400, comment: '' }).then(() => loadHomeFast()); }
+function addCustomWater() {
+  const n = $('customDrinkName').value, a = $('customDrinkAmount').value;
+  if (!n || !a) { alert('Введите название и объём'); return; }
+  call('saveWater', { type: n, amount: a, comment: '' }).then(() => { $('customDrinkName').value = ''; $('customDrinkAmount').value = ''; loadHomeFast(); });
+}
+function logHygieneAction(t) {
+  const b = $('hygiene-' + HYGIENE_MAP[t]); if (!b) return;
+  if (b.classList.contains('completed')) call('deleteLastHygiene', { type: t }).then(r => { if (r.success) { b.classList.remove('completed'); loadHomeFast(); } });
+  else call('logHygiene', { type: t }).then(() => { b.classList.add('completed'); loadHomeFast(); });
+}
+
+// ============================================
+// WEIGHT
+// ============================================
+function saveWeightAction() {
+  const w = parseFloat($('weightInput').value); if (!w || w <= 0) { alert('Корректный вес?'); return; }
+  call('saveWeight', { weight: w }).then(() => { $('weightInput').value = ''; chartsLoaded = false; loadHomeSlow(); loadWeightChart(); });
+}
+
+// ============================================
+// SLEEP
+// ============================================
+function pad2(n) { n = Number(n) || 0; return n < 10 ? '0' + n : String(n); }
+function escapeHtml(value) { const v = (value === null || value === undefined) ? '' : String(value); return v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+function escapeJsString(value) { const v = (value === null || value === undefined) ? '' : String(value); return v.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\r?\n/g, ' '); }
+function normalizeDateInput(value) {
+  if (!value) return '';
+  const str = String(value).trim();
+  const m = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return m[1] + '-' + m[2] + '-' + m[3];
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  return '';
+}
+function normalizeTimeInput(value) {
+  if (value === null || value === undefined || value === '') return '';
+  if (typeof value === 'number') {
+    const total = Math.round(value * 1440);
+    const h = Math.floor(total / 60) % 24; const m = total % 60;
+    return pad2(h) + ':' + pad2(m);
+  }
+  const match = String(value).match(/(\d{1,2}):(\d{2})/);
+  if (!match) return '';
+  const h = Math.min(23, Math.max(0, parseInt(match[1], 10) || 0));
+  const m = Math.min(59, Math.max(0, parseInt(match[2], 10) || 0));
+  return pad2(h) + ':' + pad2(m);
+}
+function loadSleepTagsDatabase() {
+  return call('getSleepTagsDatabase').then(t => { sleepTagsDatabase = Array.isArray(t) ? t : []; return sleepTagsDatabase; }).catch(() => { sleepTagsDatabase = []; return []; });
+}
+function renderSleepTagDropdown(items, query) {
+  const dd = $('sleepTagDropdown'); if (!dd) return;
+  const list = Array.isArray(items) ? items : [];
+  const q = String(query || '').trim();
+  let html = list.map(t => `<div class="sleep-tag-dropdown-item" onclick="selectSleepTag('${escapeJsString(t)}')">${escapeHtml(t)}</div>`).join('');
+  if (q && !list.some(t => String(t).toLowerCase() === q.toLowerCase())) {
+    html += `<div class="sleep-tag-add-new" onclick="addSleepTagToDb('${escapeJsString(q)}')">+ "${escapeHtml(q)}" в базу</div>`;
+  }
+  if (html) { dd.innerHTML = html; dd.classList.remove('hidden'); }
+  else { dd.innerHTML = ''; dd.classList.add('hidden'); }
+}
+function searchSleepTags(q) {
+  const dd = $('sleepTagDropdown'); const input = $('newSleepTag');
+  if (!dd || !input) return;
+  q = String(q || '').trim();
+  if (!q) {
+    if (sleepTagsDatabase.length) renderSleepTagDropdown(sleepTagsDatabase.slice(0, 10), '');
+    else loadSleepTagsDatabase().then(tags => { if (document.activeElement === input) renderSleepTagDropdown(tags.slice(0, 10), ''); });
+    return;
+  }
+  const local = sleepTagsDatabase.filter(t => String(t).toLowerCase().includes(q.toLowerCase())).slice(0, 10);
+  renderSleepTagDropdown(local, q);
+  clearTimeout(sleepTagSearchTimer);
+  sleepTagSearchTimer = setTimeout(() => {
+    call('searchSleepTags', { query: q }).then(server => {
+      if (document.activeElement !== input) return;
+      const serverList = Array.isArray(server) ? server : [];
+      const combined = []; const seen = new Set();
+      [...local, ...serverList].forEach(t => { const key = String(t).toLowerCase(); if (!seen.has(key)) { seen.add(key); combined.push(t); } });
+      renderSleepTagDropdown(combined.slice(0, 10), q);
+    }).catch(() => { });
+  }, 200);
+}
+function selectSleepTag(t) {
+  if (!currentSleepTags.includes(t)) currentSleepTags.push(t);
+  renderSleepTagsList();
+  const input = $('newSleepTag'); if (input) input.value = '';
+  const dd = $('sleepTagDropdown'); if (dd) dd.classList.add('hidden');
+}
+function addSleepTagManual() {
+  const input = $('newSleepTag'); if (!input) return;
+  const t = input.value.trim(); if (!t) return;
+  if (!currentSleepTags.includes(t)) currentSleepTags.push(t);
+  renderSleepTagsList(); input.value = '';
+  const dd = $('sleepTagDropdown'); if (dd) dd.classList.add('hidden');
+}
+function addSleepTagToDb(t) {
+  call('saveSleepTagToDatabase', { name: t }).then(r => {
+    if (r.success) { if (!sleepTagsDatabase.includes(t)) sleepTagsDatabase.push(t); selectSleepTag(t); }
+    else if (sleepTagsDatabase.some(x => String(x).toLowerCase() === String(t).toLowerCase())) selectSleepTag(t);
+    else alert(r.message || 'Не удалось добавить тег');
+  });
+}
+function removeSleepTag(t) { currentSleepTags = currentSleepTags.filter(x => x !== t); renderSleepTagsList(); }
+function renderSleepTagsList() {
+  const c = $('sleepTagsList'); if (!c) return;
+  c.innerHTML = currentSleepTags.map(t => `<div class="sleep-tag-item">${escapeHtml(t)}<button onclick="removeSleepTag('${escapeJsString(t)}')">×</button></div>`).join('');
+}
+function saveSleep() {
+  const sd = $('sleepStartDate').value, ed = $('sleepEndDate').value;
+  if (!sd || !ed) { alert('Укажите даты'); return; }
+  const st = normalizeTimeInput($('sleepStartTime').value);
+  const et = normalizeTimeInput($('sleepEndTime').value);
+  let dur = 0;
+  if (st && et) {
+    const s = new Date('2000-01-01T' + st); const e = new Date('2000-01-01T' + et);
+    let d = (e - s) / 3600000; if (d < 0) d += 24;
+    dur = Math.round(d * 10) / 10;
+  }
+  const qualityEl = $('sleepQualityInput') || $('sleepQuality');
+  const quality = qualityEl ? (parseInt(qualityEl.value, 10) || 5) : 5;
+  call('saveSleep', { data: { startDate: sd, endDate: ed, startTime: st, endTime: et, duration: dur, quality, tags: currentSleepTags, comments: $('sleepComments').value, description: $('sleepDescription').value, rowNumber: editingSleepId } }).then(() => {
+    alert('Сохранено!');
+    const comments = $('sleepComments'); const description = $('sleepDescription');
+    if (comments) comments.value = ''; if (description) description.value = '';
+    currentSleepTags = []; renderSleepTagsList(); editingSleepId = null;
+    if (qualityEl) qualityEl.value = '5';
+    const qv = $('sleepQualityValue'); if (qv) qv.textContent = '5';
+    loadSleepHistory(); loadHomeFast();
+  });
+}
+function loadSleepHistory() {
+  call('getSleepHistory').then(sl => {
+    const c = $('sleepHistoryList'); if (!c) return;
+    if (!sl || !sl.length) { c.innerHTML = '<div style="color:#999;text-align:center">Нет записей</div>'; return; }
+    c.innerHTML = sl.map((s, i) => {
+      const st = s.startDate ? new Date(s.startDate) : null;
+      const en = s.endDate ? new Date(s.endDate) : null;
+      const stText = st && !isNaN(st.getTime()) ? st.toLocaleDateString('ru-RU') : '-';
+      const enText = en && !isNaN(en.getTime()) ? en.toLocaleDateString('ru-RU') : '-';
+      const tags = s.tags && s.tags.length ? `<div style="margin-top:5px">` + s.tags.map(t => `<span style="background:#667eea;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px;margin-right:4px">${escapeHtml(t)}</span>`).join('') + `</div>` : '';
+      const rowNumber = Number(s.rowNumber) || 0;
+      return `
+        <div class="sleep-history-item" onclick="editSleep(${i})">
+          <button class="sleep-delete-btn" title="Удалить" onclick="event.stopPropagation(); deleteSleepEntry(${i}, ${rowNumber});">×</button>
+          <div class="sleep-history-header"><div class="sleep-history-date">${stText} → ${enText}</div><div class="sleep-history-duration">${s.duration ? s.duration.toFixed(1) + ' ч' : '-'}</div></div>
+          <div class="sleep-history-details">Качество: ${s.quality || '-'} ${tags}</div>
+        </div>`;
+    }).join('');
+  }).catch(() => { const c = $('sleepHistoryList'); if (c) c.innerHTML = '<div style="color:#999;text-align:center">Ошибка загрузки</div>'; });
+}
+function editSleep(i) {
+  call('getSleepByIndex', { idx: i }).then(s => {
+    if (!s) return;
+    editingSleepId = Number(s.rowNumber) || null;
+    const startDate = $('sleepStartDate'); const endDate = $('sleepEndDate');
+    const startTime = $('sleepStartTime'); const endTime = $('sleepEndTime');
+    const comments = $('sleepComments'); const description = $('sleepDescription');
+    if (startDate) startDate.value = normalizeDateInput(s.startDate);
+    if (endDate) endDate.value = normalizeDateInput(s.endDate);
+    if (startTime) startTime.value = normalizeTimeInput(s.startTime);
+    if (endTime) endTime.value = normalizeTimeInput(s.endTime);
+    const qRaw = Number(s.quality); const q = (isNaN(qRaw) || qRaw < 1 || qRaw > 10) ? 5 : qRaw;
+    const qualityEl = $('sleepQualityInput') || $('sleepQuality');
+    if (qualityEl) qualityEl.value = q;
+    const qv = $('sleepQualityValue'); if (qv) qv.textContent = q;
+    if (comments) comments.value = s.comments || '';
+    if (description) description.value = s.description || '';
+    currentSleepTags = Array.isArray(s.tags) ? s.tags : [];
+    renderSleepTagsList();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+}
+function deleteSleepEntry(index, rowNumber) {
+  if (!confirm('Удалить запись сна?')) return;
+  const success = () => { loadSleepHistory(); loadHomeFast(); };
+  if (rowNumber && rowNumber >= 2) {
+    call('deleteSleep', { rowNumber }).then(r => { if (r.success) success(); else alert(r.message || 'Не удалось удалить'); });
+  } else {
+    call('deleteSleepByIndex', { idx: index }).then(r => { if (r.success) success(); else alert('Не удалось удалить'); });
+  }
+}
+
+// ============================================
+// CYCLE
+// ============================================
+function saveMenstrualCycleAction() {
+  const s = $('cycleStartDate').value, e = $('cycleEndDate').value;
+  if (!s) { alert('Дата начала?'); return; }
+  call('saveMenstrualCycle', { startDate: s, endDate: e }).then(() => { alert('Сохранено!'); $('cycleStartDate').value = ''; $('cycleEndDate').value = ''; loadMenstrualCycles(); renderCycleCalendar(); });
+}
+function loadMenstrualCycles() {
+  call('getMenstrualCycles').then(c => {
+    const el = $('cyclesList');
+    el.innerHTML = c.length ? c.map((x, i) => `<div class="cycle-item"><div><div style="font-weight:500">🌸 Цикл #${c.length - i}</div><div style="font-size:12px;color:#999">${x.startDate}${x.endDate ? ' — ' + x.endDate : ''}</div></div><button class="cycle-item-delete" onclick="deleteCycle(${i})">×</button></div>`).join('') : '<div style="color:#999;font-size:13px">Нет циклов</div>';
+  });
+}
+function deleteCycle(i) { if (!confirm('Удалить?')) return; call('deleteMenstrualCycle', { idx: i }).then(() => { loadMenstrualCycles(); renderCycleCalendar(); }); }
+function changeCycleMonth(d) { cycleViewDate.setMonth(cycleViewDate.getMonth() + d); renderCycleCalendar(); }
+function renderCycleCalendar() {
+  const y = cycleViewDate.getFullYear(), m = cycleViewDate.getMonth();
+  const mn = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+  $('cycleMonthLabel').textContent = mn[m] + ' ' + y;
+  const fd = new Date(y, m, 1), dim = new Date(y, m + 1, 0).getDate(), sdow = (fd.getDay() + 6) % 7, todayStr = new Date().toLocaleDateString('ru-RU');
+  call('getMenstrualCycles').then(cycles => {
+    const pd = new Set();
+    cycles.forEach(c => {
+      if (!c.startDate) return;
+      const s = parseDate(c.startDate), e = c.endDate ? parseDate(c.endDate) : new Date(s.getTime() + 4 * 86400000);
+      const cur = new Date(s);
+      while (cur <= e) { if (cur.getMonth() === m && cur.getFullYear() === y) pd.add(cur.getDate()); cur.setDate(cur.getDate() + 1); }
+    });
+    let h = '';
+    for (let i = 0; i < sdow; i++) h += '<div class="cycle-day empty"></div>';
+    for (let d = 1; d <= dim; d++) {
+      const ds = new Date(y, m, d).toLocaleDateString('ru-RU');
+      let cls = 'cycle-day';
+      if (pd.has(d)) cls += ' period';
+      if (ds === todayStr) cls += ' today';
+      h += `<div class="${cls}" onclick="handleDayClick(${y},${m},${d})">${d}</div>`;
+    }
+    $('cycleDays').innerHTML = h;
+  });
+}
+function parseDate(s) { if (s.includes('.')) { const [d, m, y] = s.split('.'); return new Date(y, m - 1, d); } return new Date(s); }
+function handleDayClick(y, m, d) {
+  const cd = new Date(y, m, d, 12);
+  if (!selectedStartDate) { selectedStartDate = cd; selectedEndDate = null; }
+  else {
+    if (cd < selectedStartDate) { selectedEndDate = selectedStartDate; selectedStartDate = cd; }
+    else selectedEndDate = cd;
+    const fmt = dt => dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+    call('saveSelectedDateRange', { startDate: fmt(selectedStartDate), endDate: fmt(selectedEndDate) }).then(() => { selectedStartDate = null; selectedEndDate = null; loadMenstrualCycles(); renderCycleCalendar(); });
+  }
+}
+
+// ============================================
+// HABITS
+// ============================================
+function toggleHabit(id, done) {
+  const ds = currentDate.toLocaleDateString('ru-RU');
+  (done ? call('unlogHabit', { id, dateStr: ds }) : call('logHabit', { id, dateStr: ds })).then(() => loadHomeFast());
+}
+function loadHabitsManageList() {
+  call('getHabitsDatabase').then(db => {
+    const c = $('habitsManageList');
+    c.innerHTML = db.length ? db.map(h => `<div class="habit-manage-item"><div class="habit-manage-info"><div class="habit-manage-icon">${h.icon}</div><div><div class="habit-manage-name">${h.name}</div><div style="font-size:11px;color:#999">${h.frequency === 'daily' ? 'Ежедневно' : 'Еженедельно'}</div></div></div><button class="habit-manage-delete" onclick="deleteHabitAction('${h.id}')">×</button></div>`).join('') : '<div style="color:#999;text-align:center;padding:15px">Пока нет привычек</div>';
+  });
+}
+function openHabitModal(h) {
+  $('habitModalTitle').textContent = h ? 'Редактировать' : 'Новая привычка';
+  $('habitName').value = h ? h.name : '';
+  $('habitIcon').value = h ? h.icon : '✅';
+  $('habitFrequency').value = h ? h.frequency : 'daily';
+  $('habitId').value = h ? h.id : '';
+  $('habitModal').classList.add('active');
+}
+function closeHabitModal() { $('habitModal').classList.remove('active'); }
+function saveHabitAction() {
+  const n = $('habitName').value.trim(), ic = $('habitIcon').value.trim() || '✅', f = $('habitFrequency').value, id = $('habitId').value;
+  if (!n) { alert('Название?'); return; }
+  const d = { name: n, icon: ic, frequency: f }; if (id) d.id = id;
+  call('saveHabit', { data: d }).then(r => { if (r.success) { closeHabitModal(); loadHabitsManageList(); loadHomeFast(); } });
+}
+function deleteHabitAction(id) { if (!confirm('Удалить привычку?')) return; call('deleteHabit', { id }).then(r => { if (r.success) { loadHabitsManageList(); loadHomeFast(); } }); }
+
+// ============================================
+// ADMIN
+// ============================================
+function loadAdminPanel() {
+  if (!currentUser || !currentUser.isAdmin) return;
+  call('adminGetStats').then(stats => {
+    if (stats.error) { alert(stats.error); return; }
+    $('adminStatsGrid').innerHTML = `
+      <div class="admin-stat-card"><div class="num">${stats.totalUsers}</div><div class="lbl">Всего пользователей</div></div>
+      <div class="admin-stat-card"><div class="num">${stats.activeUsers}</div><div class="lbl">Активных</div></div>
+      <div class="admin-stat-card"><div class="num">${stats.adminUsers}</div><div class="lbl">Админов</div></div>
+      <div class="admin-stat-card"><div class="num">${stats.dataCounts.DailyFood || 0}</div><div class="lbl">Записей еды</div></div>
+      <div class="admin-stat-card"><div class="num">${stats.dataCounts.Workouts || 0}</div><div class="lbl">Тренировок</div></div>
+      <div class="admin-stat-card"><div class="num">${stats.dataCounts.SleepLog || 0}</div><div class="lbl">Записей сна</div></div>
+      <div class="admin-stat-card"><div class="num">${stats.dataCounts.WeightLog || 0}</div><div class="lbl">Записей веса</div></div>
+      <div class="admin-stat-card"><div class="num">${stats.dataCounts.HabitLog || 0}</div><div class="lbl">Привычек выполнено</div></div>`;
+  });
+  call('adminGetAllUsers').then(users => {
+    if (users.error) { alert(users.error); return; }
+    const c = $('adminUsersList');
+    c.innerHTML = users.map(u => `
+      <div class="admin-user-row">
+        <div class="admin-user-info">
+          <div class="admin-user-email">${u.email}</div>
+          <div class="admin-user-meta">${u.role === 'admin' ? '👑 Админ' : '👤 Пользователь'} • <span class="status-badge ${u.status === 'active' ? 'status-active' : 'status-blocked'}">${u.status === 'active' ? 'Активен' : 'Заблокирован'}</span> • Рег: ${u.registeredAt}</div>
+        </div>
+        <div class="admin-user-actions">
+          <select class="role-select" onchange="adminChangeRole('${u.email}',this.value)" ${u.email === currentUser.email ? 'disabled' : ''}>
+            <option value="user" ${u.role === 'user' ? 'selected' : ''}>Пользователь</option>
+            <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Администратор</option>
+          </select>
+          ${u.email !== currentUser.email ? `
+            <button class="btn-xs ${u.status === 'active' ? 'btn-xs-red' : 'btn-xs-green'}" onclick="adminToggleStatus('${u.email}','${u.status === 'active' ? 'blocked' : 'active'}')">${u.status === 'active' ? '🚫 Блок' : '✅ Разблок'}</button>
+            <button class="btn-xs btn-xs-red" onclick="adminRemoveUser('${u.email}')">🗑️</button>` : '<span style="font-size:11px;color:#999">(вы)</span>'}
+        </div>
+      </div>`).join('');
+  });
+}
+function adminChangeRole(email, role) { call('adminSetUserRole', { targetEmail: email, role }).then(r => { if (!r.success) alert(r.error); else loadAdminPanel(); }); }
+function adminToggleStatus(email, status) { call('adminSetUserStatus', { targetEmail: email, status }).then(r => { if (!r.success) alert(r.error); else loadAdminPanel(); }); }
+function adminRemoveUser(email) { if (!confirm('Удалить пользователя и все его данные?')) return; call('adminDeleteUser', { targetEmail: email }).then(r => { if (!r.success) alert(r.error); else loadAdminPanel(); }); }
+
+// ============================================
+// GLOBAL EVENTS
+// ============================================
+document.addEventListener('click', e => {
+  if (!e.target.closest('.autocomplete-container')) $$('.autocomplete-list').forEach(l => l.classList.add('hidden'));
+  if (!e.target.closest('.sleep-tag-autocomplete')) { const d = $('sleepTagDropdown'); if (d) d.classList.add('hidden'); }
+});
+loadSleepTagsDatabase();
+</script>
+</body>
+</html>
